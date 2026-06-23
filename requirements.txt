@@ -3,10 +3,10 @@ pandas
 numpy
 scikit-learn
 imbalanced-learn
-tensorflow
+tensorflow==2.16.1
 shap
 plotly
 matplotlib
 pillow
 joblib
-opencv-python
+opencv-python-headless
