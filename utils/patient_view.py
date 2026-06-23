@@ -113,7 +113,7 @@ def get_completeness():
     Calculates the count and percentage of completed required features.
     """
     required_keys = [
-        'usia', 'gol_darah', 'berat', 'tinggi', 'lingkar_pinggang', 'lingkar_pinggul',
+        'nama', 'usia', 'gol_darah', 'berat', 'tinggi', 'lingkar_pinggang', 'lingkar_pinggul',
         'siklus', 'lama_siklus', 'lama_menikah', 'pernah_hamil', 'jumlah_keguguran',
         'kenaikan_bb', 'rambut_berlebih', 'kulit_gelap', 'rambut_rontok', 'jerawat',
         'fast_food', 'olahraga', 'denyut_nadi', 'frekuensi_napas', 'hemoglobin',
@@ -173,6 +173,8 @@ def show_patient_screening():
     step_container = st.container(border=True)
     
     with step_container:
+        if "step_error" in st.session_state:
+            st.error(st.session_state.step_error)
         # ==========================
         # STEP 1: Data Pribadi
         # ==========================
@@ -180,14 +182,13 @@ def show_patient_screening():
             st.markdown("<h4 style='margin-top:0; color:#3F3F46;'>Data Pribadi</h4>", unsafe_allow_html=True)
             
             st.session_state.nama = st.text_input(
-                "Nama Lengkap Pasien (Opsional)",
+                "Nama Lengkap Pasien *",
                 value=st.session_state.nama
             )
             
             st.session_state.usia = st.number_input(
                 "Usia Pasien (Tahun) *",
-                min_value=10,
-                max_value=60,
+                min_value=0,
                 step=1,
                 value=st.session_state.usia,
                 placeholder="Masukkan usia"
@@ -203,7 +204,8 @@ def show_patient_screening():
             )
             
             step_complete = (
-                st.session_state.usia is not None 
+                st.session_state.nama != ""
+                and st.session_state.usia is not None and st.session_state.usia > 0
                 and st.session_state.gol_darah != ""
             )
 
@@ -217,8 +219,7 @@ def show_patient_screening():
             with col_bb:
                 st.session_state.berat = st.number_input(
                     "Berat Badan (kg) *",
-                    min_value=25.0,
-                    max_value=200.0,
+                    min_value=0.0,
                     step=0.1,
                     value=st.session_state.berat,
                     placeholder="Contoh: 54.5"
@@ -226,8 +227,7 @@ def show_patient_screening():
             with col_tb:
                 st.session_state.tinggi = st.number_input(
                     "Tinggi Badan (cm) *",
-                    min_value=100.0,
-                    max_value=220.0,
+                    min_value=0.0,
                     step=0.5,
                     value=st.session_state.tinggi,
                     placeholder="Contoh: 156.0"
@@ -237,8 +237,7 @@ def show_patient_screening():
             with col_pinggang:
                 st.session_state.lingkar_pinggang = st.number_input(
                     "Lingkar Pinggang (inci) *",
-                    min_value=15.0,
-                    max_value=60.0,
+                    min_value=0.0,
                     step=0.1,
                     value=st.session_state.lingkar_pinggang,
                     placeholder="Contoh: 28.0"
@@ -246,8 +245,7 @@ def show_patient_screening():
             with col_pinggul:
                 st.session_state.lingkar_pinggul = st.number_input(
                     "Lingkar Pinggul (inci) *",
-                    min_value=15.0,
-                    max_value=60.0,
+                    min_value=0.0,
                     step=0.1,
                     value=st.session_state.lingkar_pinggul,
                     placeholder="Contoh: 35.0"
@@ -291,10 +289,10 @@ def show_patient_screening():
                     )
                     
             step_complete = (
-                st.session_state.berat is not None 
-                and st.session_state.tinggi is not None 
-                and st.session_state.lingkar_pinggang is not None 
-                and st.session_state.lingkar_pinggul is not None
+                st.session_state.berat is not None and st.session_state.berat > 0.0
+                and st.session_state.tinggi is not None and st.session_state.tinggi > 0.0
+                and st.session_state.lingkar_pinggang is not None and st.session_state.lingkar_pinggang > 0.0
+                and st.session_state.lingkar_pinggul is not None and st.session_state.lingkar_pinggul > 0.0
             )
 
         # ==========================
@@ -313,8 +311,7 @@ def show_patient_screening():
             
             st.session_state.lama_siklus = st.number_input(
                 "Rata-rata lama siklus menstruasi (hari) *",
-                min_value=1,
-                max_value=120,
+                min_value=0,
                 step=1,
                 value=st.session_state.lama_siklus,
                 placeholder="Jumlah hari siklus"
@@ -323,7 +320,6 @@ def show_patient_screening():
             st.session_state.lama_menikah = st.number_input(
                 "Lama Menikah (Tahun) *",
                 min_value=0.0,
-                max_value=40.0,
                 step=0.5,
                 value=st.session_state.lama_menikah,
                 placeholder="Isi 0 jika belum menikah"
@@ -338,7 +334,6 @@ def show_patient_screening():
             st.session_state.jumlah_keguguran = st.number_input(
                 "Jumlah Keguguran *",
                 min_value=0,
-                max_value=20,
                 step=1,
                 value=st.session_state.jumlah_keguguran,
                 placeholder="Isi 0 jika tidak pernah mengalami keguguran"
@@ -346,10 +341,10 @@ def show_patient_screening():
             
             step_complete = (
                 st.session_state.siklus != ""
-                and st.session_state.lama_siklus is not None
-                and st.session_state.lama_menikah is not None
+                and st.session_state.lama_siklus is not None and st.session_state.lama_siklus > 0
+                and st.session_state.lama_menikah is not None and st.session_state.lama_menikah >= 0.0
                 and st.session_state.pernah_hamil != ""
-                and st.session_state.jumlah_keguguran is not None
+                and st.session_state.jumlah_keguguran is not None and st.session_state.jumlah_keguguran >= 0
             )
 
         # ==========================
@@ -433,8 +428,7 @@ def show_patient_screening():
             with col_nadi:
                 st.session_state.denyut_nadi = st.number_input(
                     "Denyut Nadi (bpm) *",
-                    min_value=30,
-                    max_value=200,
+                    min_value=0,
                     step=1,
                     value=st.session_state.denyut_nadi,
                     placeholder="Denyut nadi"
@@ -442,8 +436,7 @@ def show_patient_screening():
             with col_napas:
                 st.session_state.frekuensi_napas = st.number_input(
                     "Frekuensi Napas (/menit) *",
-                    min_value=8,
-                    max_value=60,
+                    min_value=0,
                     step=1,
                     value=st.session_state.frekuensi_napas,
                     placeholder="Frekuensi napas"
@@ -451,8 +444,7 @@ def show_patient_screening():
             with col_hb:
                 st.session_state.hemoglobin = st.number_input(
                     "Hemoglobin (g/dL) *",
-                    min_value=4.0,
-                    max_value=25.0,
+                    min_value=0.0,
                     step=0.1,
                     value=st.session_state.hemoglobin,
                     placeholder="Kadar Hb"
@@ -462,8 +454,7 @@ def show_patient_screening():
             with col_sistolik:
                 st.session_state.sistolik = st.number_input(
                     "Tekanan Darah Sistolik (mmHg) *",
-                    min_value=50,
-                    max_value=250,
+                    min_value=0,
                     step=1,
                     value=st.session_state.sistolik,
                     placeholder="Sistolik"
@@ -471,19 +462,18 @@ def show_patient_screening():
             with col_diastolik:
                 st.session_state.diastolik = st.number_input(
                     "Tekanan Darah Diastolik (mmHg) *",
-                    min_value=30,
-                    max_value=150,
+                    min_value=0,
                     step=1,
                     value=st.session_state.diastolik,
                     placeholder="Diastolik"
                 )
                 
             step_complete = (
-                st.session_state.denyut_nadi is not None
-                and st.session_state.frekuensi_napas is not None
-                and st.session_state.hemoglobin is not None
-                and st.session_state.sistolik is not None
-                and st.session_state.diastolik is not None
+                st.session_state.denyut_nadi is not None and st.session_state.denyut_nadi > 0
+                and st.session_state.frekuensi_napas is not None and st.session_state.frekuensi_napas > 0
+                and st.session_state.hemoglobin is not None and st.session_state.hemoglobin > 0.0
+                and st.session_state.sistolik is not None and st.session_state.sistolik > 0
+                and st.session_state.diastolik is not None and st.session_state.diastolik > 0
             )
 
         # ==========================
@@ -497,7 +487,6 @@ def show_patient_screening():
                 st.session_state.beta_hcg_1 = st.number_input(
                     "Beta HCG I (mIU/mL) *",
                     min_value=0.0,
-                    max_value=500.0,
                     step=0.01,
                     value=st.session_state.beta_hcg_1,
                     placeholder="Beta HCG I"
@@ -506,7 +495,6 @@ def show_patient_screening():
                 st.session_state.beta_hcg_2 = st.number_input(
                     "Beta HCG II (mIU/mL) *",
                     min_value=0.0,
-                    max_value=500.0,
                     step=0.01,
                     value=st.session_state.beta_hcg_2,
                     placeholder="Beta HCG II"
@@ -515,7 +503,6 @@ def show_patient_screening():
                 st.session_state.tsh = st.number_input(
                     "TSH (mIU/L) *",
                     min_value=0.0,
-                    max_value=50.0,
                     step=0.01,
                     value=st.session_state.tsh,
                     placeholder="TSH"
@@ -526,7 +513,6 @@ def show_patient_screening():
                 st.session_state.fsh = st.number_input(
                     "FSH (mIU/mL) *",
                     min_value=0.0,
-                    max_value=150.0,
                     step=0.01,
                     value=st.session_state.fsh,
                     placeholder="FSH"
@@ -535,7 +521,6 @@ def show_patient_screening():
                 st.session_state.lh = st.number_input(
                     "LH (mIU/mL) *",
                     min_value=0.0,
-                    max_value=150.0,
                     step=0.01,
                     value=st.session_state.lh,
                     placeholder="LH"
@@ -544,7 +529,6 @@ def show_patient_screening():
                 st.session_state.amh = st.number_input(
                     "AMH (ng/mL) *",
                     min_value=0.0,
-                    max_value=100.0,
                     step=0.01,
                     value=st.session_state.amh,
                     placeholder="AMH"
@@ -555,7 +539,6 @@ def show_patient_screening():
                 st.session_state.prolaktin = st.number_input(
                     "Prolaktin (ng/mL) *",
                     min_value=0.0,
-                    max_value=200.0,
                     step=0.01,
                     value=st.session_state.prolaktin,
                     placeholder="Prolaktin"
@@ -564,7 +547,6 @@ def show_patient_screening():
                 st.session_state.vitamin_d3 = st.number_input(
                     "Vitamin D3 (ng/mL) *",
                     min_value=0.0,
-                    max_value=200.0,
                     step=0.01,
                     value=st.session_state.vitamin_d3,
                     placeholder="Vit D3"
@@ -573,7 +555,6 @@ def show_patient_screening():
                 st.session_state.progesteron = st.number_input(
                     "Progesteron (ng/mL) *",
                     min_value=0.0,
-                    max_value=100.0,
                     step=0.01,
                     value=st.session_state.progesteron,
                     placeholder="Progesteron"
@@ -581,8 +562,7 @@ def show_patient_screening():
                 
             st.session_state.gula_darah = st.number_input(
                 "Gula Darah Sewaktu (mg/dL) *",
-                min_value=30.0,
-                max_value=500.0,
+                min_value=0.0,
                 step=0.1,
                 value=st.session_state.gula_darah,
                 placeholder="Gula Darah"
@@ -605,16 +585,16 @@ def show_patient_screening():
                 )
                 
             step_complete = (
-                st.session_state.beta_hcg_1 is not None
-                and st.session_state.beta_hcg_2 is not None
-                and st.session_state.fsh is not None
-                and st.session_state.lh is not None
-                and st.session_state.tsh is not None
-                and st.session_state.amh is not None
-                and st.session_state.prolaktin is not None
-                and st.session_state.vitamin_d3 is not None
-                and st.session_state.progesteron is not None
-                and st.session_state.gula_darah is not None
+                st.session_state.beta_hcg_1 is not None and st.session_state.beta_hcg_1 >= 0.0
+                and st.session_state.beta_hcg_2 is not None and st.session_state.beta_hcg_2 >= 0.0
+                and st.session_state.fsh is not None and st.session_state.fsh >= 0.0
+                and st.session_state.lh is not None and st.session_state.lh >= 0.0
+                and st.session_state.tsh is not None and st.session_state.tsh >= 0.0
+                and st.session_state.amh is not None and st.session_state.amh >= 0.0
+                and st.session_state.prolaktin is not None and st.session_state.prolaktin >= 0.0
+                and st.session_state.vitamin_d3 is not None and st.session_state.vitamin_d3 >= 0.0
+                and st.session_state.progesteron is not None and st.session_state.progesteron >= 0.0
+                and st.session_state.gula_darah is not None and st.session_state.gula_darah >= 0.0
             )
 
         # ==========================
@@ -628,7 +608,6 @@ def show_patient_screening():
                 st.session_state.folikel_kiri = st.number_input(
                     "Jumlah Folikel Ovarium Kiri *",
                     min_value=0,
-                    max_value=100,
                     step=1,
                     value=st.session_state.folikel_kiri,
                     placeholder="Jumlah kiri"
@@ -636,7 +615,6 @@ def show_patient_screening():
                 st.session_state.ukuran_kiri = st.number_input(
                     "Rata-rata Ukuran Folikel Kiri (mm) *",
                     min_value=0.0,
-                    max_value=50.0,
                     step=0.1,
                     value=st.session_state.ukuran_kiri,
                     placeholder="Ukuran kiri"
@@ -645,7 +623,6 @@ def show_patient_screening():
                 st.session_state.folikel_kanan = st.number_input(
                     "Jumlah Folikel Ovarium Kanan *",
                     min_value=0,
-                    max_value=100,
                     step=1,
                     value=st.session_state.folikel_kanan,
                     placeholder="Jumlah kanan"
@@ -653,7 +630,6 @@ def show_patient_screening():
                 st.session_state.ukuran_kanan = st.number_input(
                     "Rata-rata Ukuran Folikel Kanan (mm) *",
                     min_value=0.0,
-                    max_value=50.0,
                     step=0.1,
                     value=st.session_state.ukuran_kanan,
                     placeholder="Ukuran kanan"
@@ -662,18 +638,17 @@ def show_patient_screening():
             st.session_state.endometrium = st.number_input(
                 "Ketebalan Endometrium (mm) *",
                 min_value=0.0,
-                max_value=40.0,
                 step=0.1,
                 value=st.session_state.endometrium,
                 placeholder="Ketebalan endometrium"
             )
             
             step_complete = (
-                st.session_state.folikel_kiri is not None
-                and st.session_state.folikel_kanan is not None
-                and st.session_state.ukuran_kiri is not None
-                and st.session_state.ukuran_kanan is not None
-                and st.session_state.endometrium is not None
+                st.session_state.folikel_kiri is not None and st.session_state.folikel_kiri >= 0
+                and st.session_state.folikel_kanan is not None and st.session_state.folikel_kanan >= 0
+                and st.session_state.ukuran_kiri is not None and st.session_state.ukuran_kiri >= 0.0
+                and st.session_state.ukuran_kanan is not None and st.session_state.ukuran_kanan >= 0.0
+                and st.session_state.endometrium is not None and st.session_state.endometrium >= 0.0
             )
 
         # ==========================
@@ -751,7 +726,7 @@ def show_patient_screening():
                     unsafe_allow_html=True
                 )
                 with st.expander("Lihat parameter yang kosong"):
-                    missing_labels = [FEATURE_LABELS.get(key, key) for key in empty_keys]
+                    missing_labels = [("Nama Lengkap Pasien" if key == 'nama' else FEATURE_LABELS.get(key, key)) for key in empty_keys]
                     st.write(", ".join(missing_labels))
                     
             step_complete = (comp_pct >= 100.0)
@@ -766,75 +741,89 @@ def show_patient_screening():
             if st.button("Kembali", use_container_width=True):
                 st.session_state.step -= 1
                 st.session_state.prediction_done = False
+                if "step_error" in st.session_state:
+                    del st.session_state.step_error
                 st.rerun()
                 
     with col_next:
         if step < TOTAL_STEPS:
-            if st.button("Lanjut", use_container_width=True, disabled=not step_complete if step in [1,2,3,4,5,6,7,8] else False):
-                st.session_state.step += 1
-                st.rerun()
+            if st.button("Lanjut", use_container_width=True):
+                if step_complete:
+                    st.session_state.step += 1
+                    if "step_error" in st.session_state:
+                        del st.session_state.step_error
+                    st.rerun()
+                else:
+                    st.session_state.step_error = "Harap lengkapi seluruh data pada tahap ini sebelum melanjutkan."
+                    st.rerun()
         elif step == TOTAL_STEPS:
             # Custom styled prediction button (No red/purple, no icon)
-            predict_btn = st.button("Analisis Risiko PMOS", type="primary", use_container_width=True, disabled=not step_complete)
+            predict_btn = st.button("Analisis Risiko PMOS", type="primary", use_container_width=True)
             
             if predict_btn:
-                with st.spinner("Menganalisis data pasien..."):
-                    try:
-                        raw_data = {
-                            "usia": st.session_state.usia,
-                            "berat": st.session_state.berat,
-                            "tinggi": st.session_state.tinggi,
-                            "bmi": st.session_state.bmi,
-                            "gol_darah": st.session_state.gol_darah,
-                            "denyut_nadi": st.session_state.denyut_nadi,
-                            "frekuensi_napas": st.session_state.frekuensi_napas,
-                            "hemoglobin": st.session_state.hemoglobin,
-                            "siklus": st.session_state.siklus,
-                            "lama_siklus": st.session_state.lama_siklus,
-                            "lama_menikah": st.session_state.lama_menikah,
-                            "pernah_hamil": st.session_state.pernah_hamil,
-                            "jumlah_keguguran": st.session_state.jumlah_keguguran,
-                            "beta_hcg_1": st.session_state.beta_hcg_1,
-                            "beta_hcg_2": st.session_state.beta_hcg_2,
-                            "fsh": st.session_state.fsh,
-                            "lh": st.session_state.lh,
-                            "fsh_lh": st.session_state.fsh_lh,
-                            "lingkar_pinggul": st.session_state.lingkar_pinggul,
-                            "lingkar_pinggang": st.session_state.lingkar_pinggang,
-                            "whr": st.session_state.whr,
-                            "tsh": st.session_state.tsh,
-                            "amh": st.session_state.amh,
-                            "prolaktin": st.session_state.prolaktin,
-                            "vitamin_d3": st.session_state.vitamin_d3,
-                            "progesteron": st.session_state.progesteron,
-                            "gula_darah": st.session_state.gula_darah,
-                            "kenaikan_bb": st.session_state.kenaikan_bb,
-                            "rambut_berlebih": st.session_state.rambut_berlebih,
-                            "kulit_gelap": st.session_state.kulit_gelap,
-                            "rambut_rontok": st.session_state.rambut_rontok,
-                            "jerawat": st.session_state.jerawat,
-                            "fast_food": st.session_state.fast_food,
-                            "olahraga": st.session_state.olahraga,
-                            "sistolik": st.session_state.sistolik,
-                            "diastolik": st.session_state.diastolik,
-                            "folikel_kiri": st.session_state.folikel_kiri,
-                            "folikel_kanan": st.session_state.folikel_kanan,
-                            "ukuran_kiri": st.session_state.ukuran_kiri,
-                            "ukuran_kanan": st.session_state.ukuran_kanan,
-                            "endometrium": st.session_state.endometrium
-                        }
-                        
-                        df_processed = preprocess_tabular_input(raw_data)
-                        pred_label, pred_prob, threshold = predict_tabular_pmos(df_processed)
-                        explanations, _, _, _ = explain_patient_risk(df_processed)
-                        
-                        st.session_state.prediction_prob = pred_prob
-                        st.session_state.prediction_label = pred_label
-                        st.session_state.top_shap_features = explanations
-                        st.session_state.prediction_done = True
-                        
-                    except Exception as e:
-                        st.error(f"Terjadi kesalahan saat pemrosesan model: {e}")
+                if step_complete:
+                    with st.spinner("Menganalisis data pasien..."):
+                        try:
+                            raw_data = {
+                                "usia": st.session_state.usia,
+                                "berat": st.session_state.berat,
+                                "tinggi": st.session_state.tinggi,
+                                "bmi": st.session_state.bmi,
+                                "gol_darah": st.session_state.gol_darah,
+                                "denyut_nadi": st.session_state.denyut_nadi,
+                                "frekuensi_napas": st.session_state.frekuensi_napas,
+                                "hemoglobin": st.session_state.hemoglobin,
+                                "siklus": st.session_state.siklus,
+                                "lama_siklus": st.session_state.lama_siklus,
+                                "lama_menikah": st.session_state.lama_menikah,
+                                "pernah_hamil": st.session_state.pernah_hamil,
+                                "jumlah_keguguran": st.session_state.jumlah_keguguran,
+                                "beta_hcg_1": st.session_state.beta_hcg_1,
+                                "beta_hcg_2": st.session_state.beta_hcg_2,
+                                "fsh": st.session_state.fsh,
+                                "lh": st.session_state.lh,
+                                "fsh_lh": st.session_state.fsh_lh,
+                                "lingkar_pinggul": st.session_state.lingkar_pinggul,
+                                "lingkar_pinggang": st.session_state.lingkar_pinggang,
+                                "whr": st.session_state.whr,
+                                "tsh": st.session_state.tsh,
+                                "amh": st.session_state.amh,
+                                "prolaktin": st.session_state.prolaktin,
+                                "vitamin_d3": st.session_state.vitamin_d3,
+                                "progesteron": st.session_state.progesteron,
+                                "gula_darah": st.session_state.gula_darah,
+                                "kenaikan_bb": st.session_state.kenaikan_bb,
+                                "rambut_berlebih": st.session_state.rambut_berlebih,
+                                "kulit_gelap": st.session_state.kulit_gelap,
+                                "rambut_rontok": st.session_state.rambut_rontok,
+                                "jerawat": st.session_state.jerawat,
+                                "fast_food": st.session_state.fast_food,
+                                "olahraga": st.session_state.olahraga,
+                                "sistolik": st.session_state.sistolik,
+                                "diastolik": st.session_state.diastolik,
+                                "folikel_kiri": st.session_state.folikel_kiri,
+                                "folikel_kanan": st.session_state.folikel_kanan,
+                                "ukuran_kiri": st.session_state.ukuran_kiri,
+                                "ukuran_kanan": st.session_state.ukuran_kanan,
+                                "endometrium": st.session_state.endometrium
+                            }
+                            
+                            df_processed = preprocess_tabular_input(raw_data)
+                            pred_label, pred_prob, threshold = predict_tabular_pmos(df_processed)
+                            explanations, _, _, _ = explain_patient_risk(df_processed)
+                            
+                            st.session_state.prediction_prob = pred_prob
+                            st.session_state.prediction_label = pred_label
+                            st.session_state.top_shap_features = explanations
+                            st.session_state.prediction_done = True
+                            if "step_error" in st.session_state:
+                                del st.session_state.step_error
+                            
+                        except Exception as e:
+                            st.error(f"Terjadi kesalahan saat pemrosesan model: {e}")
+                else:
+                    st.session_state.step_error = "Harap lengkapi seluruh data pada tahap ini sebelum melanjutkan."
+                    st.rerun()
                         
     # ==========================
     # DISPLAY SCREENING RESULTS
