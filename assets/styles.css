@@ -1,0 +1,338 @@
+/* Import premium clinical Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+/* Global Style Overrides */
+html, body, [data-testid="stAppViewContainer"] {
+    background-color: #FCF8F8 !important;
+    font-family: 'Inter', sans-serif;
+    color: #3F3F46 !important;
+}
+
+h1, h2, h3, h4, h5, h6, [data-testid="stHeader"] {
+    font-family: 'Outfit', sans-serif;
+    color: #3F3F46 !important;
+    font-weight: 600;
+}
+
+/* Sidebar Styling: Premium Medical Style */
+[data-testid="stSidebar"] {
+    background-color: #FFFFFF !important;
+    border-right: 1px solid #E5E7EB !important;
+}
+
+/* Sidebar Navigasi Label Header */
+[data-testid="stSidebar"] div[data-testid="stRadio"] > label[data-testid="stWidgetLabel"] {
+    display: block !important;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700 !important;
+    font-size: 0.75rem !important;
+    color: #9CA3AF !important; /* Neutral muted gray */
+    text-transform: uppercase !important;
+    letter-spacing: 1.5px !important;
+    margin-bottom: 12px !important;
+    padding-left: 16px !important;
+}
+
+/* Sidebar Navigasi list layout */
+[data-testid="stSidebar"] div[role="radiogroup"] {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 8px;
+}
+
+[data-testid="stSidebar"] div[role="radiogroup"] label {
+    display: flex !important;
+    align-items: center;
+    padding: 10px 16px !important;
+    border-radius: 8px !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin: 0 !important;
+    width: 100%;
+}
+
+/* Hide Streamlit default radio circle */
+[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
+    display: none !important;
+}
+
+/* Style active item */
+[data-testid="stSidebar"] div[role="radiogroup"] label:has(input[type="radio"]:checked) {
+    background-color: #FBEFEF !important;
+    border-left: 4px solid #F5AFAF !important;
+    border-radius: 0px 8px 8px 0px !important; /* clean look with flat left border */
+}
+
+[data-testid="stSidebar"] div[role="radiogroup"] label:has(input[type="radio"]:checked) div[data-testid="stMarkdownContainer"] p {
+    color: #3F3F46 !important;
+    font-weight: 600 !important;
+}
+
+/* Style inactive item */
+[data-testid="stSidebar"] div[role="radiogroup"] label:not(:has(input[type="radio"]:checked)) {
+    background-color: transparent !important;
+    border-left: 4px solid transparent !important;
+}
+
+[data-testid="stSidebar"] div[role="radiogroup"] label:not(:has(input[type="radio"]:checked)) div[data-testid="stMarkdownContainer"] p {
+    color: #6B7280 !important;
+    font-weight: 500 !important;
+}
+
+/* Hover for inactive item */
+[data-testid="stSidebar"] div[role="radiogroup"] label:not(:has(input[type="radio"]:checked)):hover {
+    background-color: #FBEFEF !important;
+    border-radius: 0px 8px 8px 0px !important;
+}
+
+[data-testid="stSidebar"] div[role="radiogroup"] label:not(:has(input[type="radio"]:checked)):hover div[data-testid="stMarkdownContainer"] p {
+    color: #3F3F46 !important;
+}
+
+/* Custom Cards: White, thin border, soft shadow, clean typography */
+.ovaris-card {
+    background: #FFFFFF !important;
+    border: 1px solid #E5E7EB !important;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-bottom: 20px;
+    color: #3F3F46;
+}
+
+.ovaris-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Disclaimer / Warning Card (Grey border, outline style) */
+.disclaimer-card {
+    background: #FFFFFF !important;
+    border: 1px solid #E5E7EB !important;
+    border-left: 4px solid #6B7280 !important;
+    border-radius: 8px;
+    padding: 18px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    margin-bottom: 20px;
+    color: #6B7280;
+}
+
+.disclaimer-card h4 {
+    color: #3F3F46 !important;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-top: 0;
+}
+
+/* Step Indicator for clinical form */
+.step-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding: 0 10px;
+}
+
+.step-bubble {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #FFFFFF;
+    color: #6B7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    font-size: 0.85rem;
+    border: 1px solid #E5E7EB;
+}
+
+.step-bubble.active {
+    background: #F9DFDF;
+    color: #3F3F46;
+    border-color: #F5AFAF;
+    font-weight: 600;
+    box-shadow: 0 0 0 2px rgba(245, 175, 175, 0.2);
+}
+
+.step-bubble.completed {
+    background: #FBEFEF;
+    color: #3F3F46;
+    border-color: #F9DFDF;
+}
+
+/* Hero Section Style (Spacious, elegant layout) */
+.hero-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 40px;
+    padding: 40px;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;
+}
+
+.hero-logo-box {
+    flex-shrink: 0;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    width: 200px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-text-box {
+    flex-grow: 1;
+    text-align: left;
+}
+
+.hero-text-box h1 {
+    color: #3F3F46;
+    font-size: 2.8rem;
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.hero-text-box p.tagline {
+    margin-top: 8px;
+    margin-bottom: 15px;
+    font-size: 1.25rem;
+    color: #F5AFAF;
+    font-weight: 600;
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.hero-text-box p.description {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #6B7280;
+    line-height: 1.7;
+    text-align: justify;
+    max-width: 750px;
+}
+
+@media (max-width: 768px) {
+    .hero-container {
+        flex-direction: column;
+        text-align: center;
+        gap: 24px;
+        padding: 30px 20px;
+    }
+    .hero-logo-box {
+        margin: 0 auto;
+    }
+    .hero-text-box {
+        text-align: center;
+    }
+    .hero-text-box p.description {
+        text-align: center;
+    }
+}
+
+/* Rounded Buttons */
+div.stButton > button {
+    background-color: #FBEFEF !important;
+    color: #3F3F46 !important;
+    border: 1px solid #F9DFDF !important;
+    border-radius: 20px !important;
+    padding: 6px 20px !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    transition: background-color 0.2s, border-color 0.2s !important;
+}
+
+div.stButton > button:hover {
+    background-color: #F5AFAF !important;
+    border-color: #F5AFAF !important;
+    color: #3F3F46 !important;
+}
+
+/* Active primary buttons */
+div.stButton > button[kind="primary"] {
+    background-color: #F9DFDF !important;
+    border: 1px solid #F5AFAF !important;
+    font-weight: 600 !important;
+}
+
+div.stButton > button[kind="primary"]:hover {
+    background-color: #F5AFAF !important;
+    border-color: #F5AFAF !important;
+}
+
+/* Clean recommendation list cards */
+.rec-card-warning {
+    border-left: 3px solid #F5AFAF;
+    background: #FFFFFF;
+    padding: 16px;
+    border-radius: 8px;
+    border-top: 1px solid #E5E7EB;
+    border-right: 1px solid #E5E7EB;
+    border-bottom: 1px solid #E5E7EB;
+    margin-bottom: 15px;
+}
+
+.rec-card-info {
+    border-left: 3px solid #6B7280;
+    background: #FFFFFF;
+    padding: 16px;
+    border-radius: 8px;
+    border-top: 1px solid #E5E7EB;
+    border-right: 1px solid #E5E7EB;
+    border-bottom: 1px solid #E5E7EB;
+    margin-bottom: 15px;
+}
+
+.rec-card-success {
+    border-left: 3px solid #E5E7EB;
+    background: #FFFFFF;
+    padding: 16px;
+    border-radius: 8px;
+    border-top: 1px solid #E5E7EB;
+    border-right: 1px solid #E5E7EB;
+    border-bottom: 1px solid #E5E7EB;
+    margin-bottom: 15px;
+}
+
+/* White spaces adjustments */
+.block-container {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+}
+
+/* Clean Metric styles */
+.metric-container-white {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.metric-value-dark {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #3F3F46;
+    font-family: 'Outfit', sans-serif;
+}
+
+.metric-label-gray {
+    font-size: 0.85rem;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
