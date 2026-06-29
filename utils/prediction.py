@@ -53,12 +53,19 @@ def load_image_validation_params():
                 scaler_scale = g["scaler_scale"][...]
                 center_0 = g["class_centers/0"][...]
                 center_1 = g["class_centers/1"][...]
+                
+                # Check for custom logistic regression parameters
+                logistic_weights = g["logistic_weights"][...] if "logistic_weights" in g else None
+                logistic_bias = float(g.attrs.get("logistic_bias", 0.0)) if "logistic_bias" in g.attrs else None
+                
                 return {
                     "threshold": threshold,
                     "scaler_mean": scaler_mean,
                     "scaler_scale": scaler_scale,
                     "center_0": center_0,
-                    "center_1": center_1
+                    "center_1": center_1,
+                    "logistic_weights": logistic_weights,
+                    "logistic_bias": logistic_bias
                 }
     except Exception as e:
         print(f"Warning: Failed to load USG validation parameters: {e}")
@@ -298,7 +305,7 @@ def is_smooth_repetitive_object_photo(img_file, img_size=128):
 
 def validate_usg_image_with_model(img_file, img_array):
     """
-    Performs the full 5-stage validation pipeline exactly as defined in CNN.ipynb.
+    Performs USG image validation solely using CNN deep features (no manual rule-based filters).
     Returns:
         is_valid: bool (True if all stages pass)
         debug_info: dict containing raw metrics for auditing/debugging
@@ -308,12 +315,12 @@ def validate_usg_image_with_model(img_file, img_array):
     debug_info = {
         "is_valid_file": False,
         "is_valid_file_msg": "",
-        "basic_screening": False,
-        "basic_screening_msg": "",
+        "basic_screening": True,
+        "basic_screening_msg": "Skipped (CNN-only)",
         "is_scribble": False,
-        "is_scribble_msg": "",
+        "is_scribble_msg": "Skipped (CNN-only)",
         "is_non_usg_object": False,
-        "is_non_usg_object_msg": "",
+        "is_non_usg_object_msg": "Skipped (CNN-only)",
         "dist_0": 0.0,
         "dist_1": 0.0,
         "min_dist": 0.0,
@@ -326,76 +333,66 @@ def validate_usg_image_with_model(img_file, img_array):
     
     if val_params is None:
         debug_info["error"] = "Validation parameters not loaded"
-        return True, debug_info, "Validator parameter gagal dimuat."
+        return False, debug_info, "Validator parameter gagal dimuat."
         
     try:
-        model = load_image_model()
-        img_size = model.input_shape[1]
-        
-        # Step 1: File readability and extension
+        # Step 1: File readability and extension check (essential format validation)
         v1, m1 = is_valid_image_file(img_file)
         debug_info["is_valid_file"] = v1
         debug_info["is_valid_file_msg"] = m1
         if not v1:
             return False, debug_info, m1
             
-        # Step 2: Color and contrast screening
-        v2, m2 = basic_image_screening(img_file)
-        debug_info["basic_screening"] = v2
-        debug_info["basic_screening_msg"] = m2
-        if not v2:
-            return False, debug_info, m2
-            
-        # Step 3: Scribble/Line-art filter (fails if True)
-        v3, m3 = is_line_art_or_scribble(img_file, img_size=img_size)
-        debug_info["is_scribble"] = v3
-        debug_info["is_scribble_msg"] = m3
-        if v3:
-            return False, debug_info, m3
-            
-        # Step 4: Photo objects filter (fails if True)
-        v4, m4 = is_smooth_repetitive_object_photo(img_file, img_size=img_size)
-        debug_info["is_non_usg_object"] = v4
-        debug_info["is_non_usg_object_msg"] = m4
-        if v4:
-            return False, debug_info, m4
-            
-        # Step 5: Feature distribution checking
+        # Step 2: CNN Deep Feature Classifier validation (entirely CNN-based OOD classification)
         feature_extractor = get_feature_extractor()
         if feature_extractor is None:
             debug_info["error"] = "Feature extractor could not be built"
-            return True, debug_info, "Feature extractor gagal dibuat."
+            return False, debug_info, "Feature extractor gagal dibuat."
             
         features = feature_extractor.predict(img_array)[0]
         
-        # Standardize using loaded scaler mean & scale
-        scaled_features = (features - val_params["scaler_mean"]) / val_params["scaler_scale"]
-        
-        # Compute Euclidean distance to both class centers
-        dist_0 = np.linalg.norm(scaled_features - val_params["center_0"])
-        dist_1 = np.linalg.norm(scaled_features - val_params["center_1"])
-        min_dist = min(dist_0, dist_1)
-        
-        debug_info["dist_0"] = float(dist_0)
-        debug_info["dist_1"] = float(dist_1)
-        debug_info["min_dist"] = float(min_dist)
-        debug_info["threshold"] = float(val_params["threshold"])
-        
-        is_feature_valid = min_dist <= val_params["threshold"]
-        debug_info["feature_valid"] = is_feature_valid
-        debug_info["feature_valid_msg"] = f"min_dist={min_dist:.4f}, th={val_params['threshold']:.4f}"
+        # Check if we have our custom logistic regression model stored in the h5 file
+        if val_params.get("logistic_weights") is not None:
+            weights = val_params["logistic_weights"]
+            bias = val_params["logistic_bias"]
+            
+            # Linear model decision score: score = features * weights + bias
+            score = float(np.dot(features, weights) + bias)
+            is_feature_valid = score > 0
+            
+            debug_info["min_dist"] = score  # store decision score
+            debug_info["threshold"] = 0.0
+            debug_info["feature_valid"] = is_feature_valid
+            debug_info["feature_valid_msg"] = f"CNN score={score:.4f}"
+        else:
+            # Fallback to the original Euclidean distance OOD logic
+            scaled_features = (features - val_params["scaler_mean"]) / val_params["scaler_scale"]
+            dist_0 = np.linalg.norm(scaled_features - val_params["center_0"])
+            dist_1 = np.linalg.norm(scaled_features - val_params["center_1"])
+            min_dist = min(dist_0, dist_1)
+            
+            debug_info["dist_0"] = float(dist_0)
+            debug_info["dist_1"] = float(dist_1)
+            debug_info["min_dist"] = float(min_dist)
+            debug_info["threshold"] = float(val_params["threshold"])
+            
+            is_feature_valid = min_dist <= val_params["threshold"]
+            debug_info["feature_valid"] = is_feature_valid
+            debug_info["feature_valid_msg"] = f"min_dist={min_dist:.4f}, th={val_params['threshold']:.4f}"
         
         # Add raw classification probs
+        model = load_image_model()
         raw_probs = model.predict(img_array)[0]
         debug_info["raw_probs"] = [float(p) for p in raw_probs]
         
         if not is_feature_valid:
-            return False, debug_info, "Pola fitur gambar terlalu jauh dari distribusi citra USG training."
+            return False, debug_info, "Gambar tidak dikenali sebagai citra USG ovarium."
             
-        return True, debug_info, "Gambar lolos seluruh tahapan validasi citra USG ovarium."
+        return True, debug_info, "Citra USG ovarium berhasil dikenali."
     except Exception as e:
         debug_info["error"] = str(e)
-        return True, debug_info, f"Terjadi kesalahan saat validasi: {e}"
+        # Conservative fallback: reject on validation error to minimize False Positives
+        return False, debug_info, f"Terjadi kesalahan saat validasi: {e}"
 
 def predict_image_pmos(img_array):
     """
