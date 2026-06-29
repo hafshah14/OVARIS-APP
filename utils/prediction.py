@@ -7,6 +7,7 @@ import keras
 import os
 import cv2
 from PIL import Image
+from sklearn.preprocessing import StandardScaler
 
 # Apply runtime compatibility patch for older Keras models containing quantization configs
 try:
@@ -42,30 +43,34 @@ def load_image_model():
 def load_image_validation_params():
     """
     Loads validation center and scaling parameters stored inside the model's HDF5 metadata.
+    And builds the scaler object exactly as in Cell 8/10 of CNN.ipynb.
     """
     import h5py
     try:
         with h5py.File("models/model.h5", "r") as f:
             if "usg_validation" in f:
-                g = f["usg_validation"]
-                threshold = float(g.attrs.get("threshold", 25.1597))
-                scaler_mean = g["scaler_mean"][...]
-                scaler_scale = g["scaler_scale"][...]
-                center_0 = g["class_centers/0"][...]
-                center_1 = g["class_centers/1"][...]
+                grp = f["usg_validation"]
+                img_size = int(grp.attrs["img_size"])
+                threshold = float(grp.attrs["threshold"])
+                threshold_percentile = float(grp.attrs["threshold_percentile"])
                 
-                # Check for custom logistic regression parameters
-                logistic_weights = g["logistic_weights"][...] if "logistic_weights" in g else None
-                logistic_bias = float(g.attrs.get("logistic_bias", 0.0)) if "logistic_bias" in g.attrs else None
+                scaler = StandardScaler()
+                scaler.mean_ = grp["scaler_mean"][:]
+                scaler.scale_ = grp["scaler_scale"][:]
+                scaler.var_ = scaler.scale_ ** 2
+                scaler.n_features_in_ = scaler.mean_.shape[0]
+                scaler.n_samples_seen_ = 1
+
+                class_centers = {}
+                for class_index in grp["class_centers"].keys():
+                    class_centers[int(class_index)] = grp["class_centers"][class_index][:]
                 
                 return {
+                    "img_size": img_size,
                     "threshold": threshold,
-                    "scaler_mean": scaler_mean,
-                    "scaler_scale": scaler_scale,
-                    "center_0": center_0,
-                    "center_1": center_1,
-                    "logistic_weights": logistic_weights,
-                    "logistic_bias": logistic_bias
+                    "threshold_percentile": threshold_percentile,
+                    "scaler": scaler,
+                    "class_centers": class_centers
                 }
     except Exception as e:
         print(f"Warning: Failed to load USG validation parameters: {e}")
@@ -128,7 +133,7 @@ def is_valid_image_file(img_file):
     except Exception:
         return False, "File tidak dapat dibaca sebagai gambar."
 
-def basic_image_screening(img_file):
+def basic_image_screening(img_file, show_reason=True):
     try:
         if isinstance(img_file, str):
             img_pil = Image.open(img_file).convert("RGB")
@@ -142,6 +147,7 @@ def basic_image_screening(img_file):
         if height < 50 or width < 50:
             return False, "Gambar terlalu kecil dan tidak layak diproses sebagai citra USG."
 
+        gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
         hsv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
         saturation = hsv[:, :, 1]
 
@@ -158,7 +164,7 @@ def basic_image_screening(img_file):
 
         colorful_pixel_ratio = np.sum(saturation > 80) / saturation.size
 
-        # Tolak jika warna terlalu mencolok (foto objek umum / screenshot HP)
+        # Tolak hanya jika warna kuat dan menyebar, seperti foto objek umum
         too_colorful = (
             (p90_saturation > 140 and colorful_pixel_ratio > 0.12) or
             (mean_saturation > 90 and colorful_pixel_ratio > 0.18) or
@@ -173,7 +179,7 @@ def basic_image_screening(img_file):
     except Exception as e:
         return False, f"Error pada validasi awal: {e}"
 
-def is_line_art_or_scribble(img_file, img_size=128):
+def is_line_art_or_scribble(img_file, img_size=128, show_reason=True):
     try:
         if isinstance(img_file, str):
             img_pil = Image.open(img_file).convert("RGB")
@@ -200,8 +206,25 @@ def is_line_art_or_scribble(img_file, img_size=128):
         local_std = np.sqrt(np.maximum(mean_sq - mean ** 2, 0))
         local_std_mean = np.mean(local_std)
 
+        # Pixel putih terang
         _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
         white_ratio = np.sum(binary > 0) / binary.size
+
+        # Connected component
+        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary, connectivity=8)
+
+        component_areas = []
+        for i in range(1, num_labels):
+            area = stats[i, cv2.CC_STAT_AREA]
+            if area > 10:
+                component_areas.append(area)
+
+        if len(component_areas) > 0:
+            largest_component_ratio = max(component_areas) / gray.size
+            component_count = len(component_areas)
+        else:
+            largest_component_ratio = 0
+            component_count = 0
 
         is_scribble = (
             dark_ratio > 0.85 and
@@ -212,7 +235,7 @@ def is_line_art_or_scribble(img_file, img_size=128):
             local_std_mean < 20
         )
 
-        reason = f"dark={dark_ratio:.2f}, mid={mid_intensity_ratio:.2f}, white={white_ratio:.2f}, edge_dens={edge_density:.2f}, std_mean={local_std_mean:.2f}"
+        reason = f"dark={dark_ratio:.2f}, mid={mid_intensity_ratio:.2f}, edge_dens={edge_density:.2f}, std_mean={local_std_mean:.2f}"
         if is_scribble:
             return True, f"Gambar terdeteksi sebagai coretan/line-art, bukan citra USG ({reason})."
         else:
@@ -220,7 +243,7 @@ def is_line_art_or_scribble(img_file, img_size=128):
     except Exception as e:
         return False, f"Error pada deteksi coretan: {e}"
 
-def is_smooth_repetitive_object_photo(img_file, img_size=128):
+def is_smooth_repetitive_object_photo(img_file, img_size=128, show_reason=True):
     try:
         if isinstance(img_file, str):
             img_pil = Image.open(img_file).convert("RGB")
@@ -267,6 +290,21 @@ def is_smooth_repetitive_object_photo(img_file, img_size=128):
         _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
         white_ratio = np.sum(binary > 0) / binary.size
 
+        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary, connectivity=8)
+
+        component_areas = []
+        for i in range(1, num_labels):
+            area = stats[i, cv2.CC_STAT_AREA]
+            if area > 10:
+                component_areas.append(area)
+
+        if len(component_areas) > 0:
+            largest_component_ratio = max(component_areas) / gray.size
+            component_count = len(component_areas)
+        else:
+            largest_component_ratio = 0
+            component_count = 0
+
         smooth_repetitive_object = (
             dark_ratio < 0.35 and
             mid_intensity_ratio > 0.65 and
@@ -305,7 +343,7 @@ def is_smooth_repetitive_object_photo(img_file, img_size=128):
 
 def validate_usg_image_with_model(img_file, img_array):
     """
-    Performs USG image validation solely using CNN deep features (no manual rule-based filters).
+    Performs the full 5-stage validation pipeline exactly as defined in CNN.ipynb.
     Returns:
         is_valid: bool (True if all stages pass)
         debug_info: dict containing raw metrics for auditing/debugging
@@ -315,12 +353,12 @@ def validate_usg_image_with_model(img_file, img_array):
     debug_info = {
         "is_valid_file": False,
         "is_valid_file_msg": "",
-        "basic_screening": True,
-        "basic_screening_msg": "Skipped (CNN-only)",
+        "basic_screening": False,
+        "basic_screening_msg": "",
         "is_scribble": False,
-        "is_scribble_msg": "Skipped (CNN-only)",
+        "is_scribble_msg": "",
         "is_non_usg_object": False,
-        "is_non_usg_object_msg": "Skipped (CNN-only)",
+        "is_non_usg_object_msg": "",
         "dist_0": 0.0,
         "dist_1": 0.0,
         "min_dist": 0.0,
@@ -336,14 +374,38 @@ def validate_usg_image_with_model(img_file, img_array):
         return False, debug_info, "Validator parameter gagal dimuat."
         
     try:
-        # Step 1: File readability and extension check (essential format validation)
+        model = load_image_model()
+        img_size = model.input_shape[1]
+        
+        # Step 1: File readability and extension
         v1, m1 = is_valid_image_file(img_file)
         debug_info["is_valid_file"] = v1
         debug_info["is_valid_file_msg"] = m1
         if not v1:
             return False, debug_info, m1
             
-        # Step 2: CNN Deep Feature Classifier validation (entirely CNN-based OOD classification)
+        # Step 2: Color and contrast screening
+        v2, m2 = basic_image_screening(img_file, show_reason=True)
+        debug_info["basic_screening"] = v2
+        debug_info["basic_screening_msg"] = m2
+        if not v2:
+            return False, debug_info, m2
+            
+        # Step 3: Scribble/Line-art filter (fails if True)
+        v3, m3 = is_line_art_or_scribble(img_file, img_size=img_size, show_reason=True)
+        debug_info["is_scribble"] = v3
+        debug_info["is_scribble_msg"] = m3
+        if v3:
+            return False, debug_info, m3
+            
+        # Step 4: Photo objects filter (fails if True)
+        v4, m4 = is_smooth_repetitive_object_photo(img_file, img_size=img_size, show_reason=True)
+        debug_info["is_non_usg_object"] = v4
+        debug_info["is_non_usg_object_msg"] = m4
+        if v4:
+            return False, debug_info, m4
+            
+        # Step 5: Feature distribution checking
         feature_extractor = get_feature_extractor()
         if feature_extractor is None:
             debug_info["error"] = "Feature extractor could not be built"
@@ -351,37 +413,29 @@ def validate_usg_image_with_model(img_file, img_array):
             
         features = feature_extractor.predict(img_array)[0]
         
-        # Check if we have our custom logistic regression model stored in the h5 file
-        if val_params.get("logistic_weights") is not None:
-            weights = val_params["logistic_weights"]
-            bias = val_params["logistic_bias"]
+        # Standardize using loaded scaler mean & scale
+        scaler = val_params["scaler"]
+        features_scaled = scaler.transform(np.expand_dims(features, axis=0))[0]
+        
+        # Compute Euclidean distance to both class centers
+        distances = {}
+        for class_index, center in val_params["class_centers"].items():
+            dist = np.linalg.norm(features_scaled - center)
+            distances[class_index] = dist
             
-            # Linear model decision score: score = features * weights + bias
-            score = float(np.dot(features, weights) + bias)
-            is_feature_valid = score > 0
-            
-            debug_info["min_dist"] = score  # store decision score
-            debug_info["threshold"] = 0.0
-            debug_info["feature_valid"] = is_feature_valid
-            debug_info["feature_valid_msg"] = f"CNN score={score:.4f}"
-        else:
-            # Fallback to the original Euclidean distance OOD logic
-            scaled_features = (features - val_params["scaler_mean"]) / val_params["scaler_scale"]
-            dist_0 = np.linalg.norm(scaled_features - val_params["center_0"])
-            dist_1 = np.linalg.norm(scaled_features - val_params["center_1"])
-            min_dist = min(dist_0, dist_1)
-            
-            debug_info["dist_0"] = float(dist_0)
-            debug_info["dist_1"] = float(dist_1)
-            debug_info["min_dist"] = float(min_dist)
-            debug_info["threshold"] = float(val_params["threshold"])
-            
-            is_feature_valid = min_dist <= val_params["threshold"]
-            debug_info["feature_valid"] = is_feature_valid
-            debug_info["feature_valid_msg"] = f"min_dist={min_dist:.4f}, th={val_params['threshold']:.4f}"
+        min_class_index = min(distances, key=distances.get)
+        min_dist = distances[min_class_index]
+        
+        debug_info["dist_0"] = float(distances.get(0, 0.0))
+        debug_info["dist_1"] = float(distances.get(1, 0.0))
+        debug_info["min_dist"] = float(min_dist)
+        debug_info["threshold"] = float(val_params["threshold"])
+        
+        is_feature_valid = min_dist <= val_params["threshold"]
+        debug_info["feature_valid"] = is_feature_valid
+        debug_info["feature_valid_msg"] = f"min_dist={min_dist:.4f}, th={val_params['threshold']:.4f}"
         
         # Add raw classification probs
-        model = load_image_model()
         raw_probs = model.predict(img_array)[0]
         debug_info["raw_probs"] = [float(p) for p in raw_probs]
         
@@ -398,15 +452,22 @@ def predict_image_pmos(img_array):
     """
     Runs prediction on a preprocessed USG image array and returns:
     - prediction: string label ("PMOS" or "Normal")
-    - confidence: float probability (0.0 to 1.0)
-    - raw_probs: array of shape (1, 2)
+    - pmos_prob: float probability of PMOS class (index 1) from 0.0 to 1.0
+    - confidence: float probability of the predicted class (max of probabilities) from 0.0 to 1.0
+    - raw_probs: array of shape (2,) containing raw probabilities
     """
     model = load_image_model()
     raw_probs = model.predict(img_array)[0]
     
-    # Class index 0: Normal / Non-PMOS
-    # Class index 1: PMOS
-    pmos_prob = float(raw_probs[1])
-    prediction = "PMOS" if pmos_prob >= 0.5 else "Normal"
+    # Audit log (raw prediction values in console logs)
+    print(f"[AUDIT] CNN Model Raw Output Probabilities: {raw_probs.tolist()}")
     
-    return prediction, pmos_prob, raw_probs
+    # Class index 0: normal, Class index 1: pcos (PMOS)
+    pmos_prob = float(raw_probs[1])
+    
+    # Argmax prediction index
+    pred_index = int(np.argmax(raw_probs))
+    prediction = "PMOS" if pred_index == 1 else "Normal"
+    confidence = float(raw_probs[pred_index])
+    
+    return prediction, pmos_prob, confidence, raw_probs

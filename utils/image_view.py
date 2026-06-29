@@ -151,12 +151,11 @@ def show_image_screening():
                 # Fetch shape from model dynamically
                 input_shape = img_model.input_shape
                 target_size = (input_shape[1], input_shape[2])
-                
-                # Preprocess image with dynamic target_size
+                             # Preprocess image with dynamic target_size
                 img_tensor, orig_img = preprocess_image(uploaded_file, target_size=target_size)
                 
                 # Run prediction
-                prediction_label, pmos_prob, raw_probs = predict_image_pmos(img_tensor)
+                prediction_label, pmos_prob, confidence_score, raw_probs = predict_image_pmos(img_tensor)
                 
                 # Generate Grad-CAM heatmap dynamically finding last conv layer
                 gradcam_img, heatmap = generate_gradcam(
@@ -170,11 +169,12 @@ def show_image_screening():
                 st.session_state.img_prediction_done = True
                 st.session_state.img_prediction_label = prediction_label
                 st.session_state.img_prediction_prob = float(pmos_prob)
+                st.session_state.img_prediction_confidence = float(confidence_score)
                 st.session_state.img_gradcam_result = gradcam_img
                 
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat memproses citra USG: {e}")
-
+ 
     # ==========================
     # DISPLAY IMAGE RESULTS
     # ==========================
@@ -184,6 +184,7 @@ def show_image_screening():
         
         p_prob = st.session_state.img_prediction_prob
         p_label = st.session_state.img_prediction_label
+        p_confidence = st.session_state.get("img_prediction_confidence", p_prob)
         
         res_c1, res_c2 = st.columns([1, 1], gap="large")
         
@@ -202,13 +203,12 @@ def show_image_screening():
             
             # Prediction outcome card
             label_color = "#F5AFAF" if p_label == "PMOS" else "#6B7280"
-            confidence_val = p_prob if p_label == "PMOS" else (1.0 - p_prob)
             st.markdown(
                 f"""
                 <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 15px; margin-top: 10px;">
                     <span style="font-size:0.85rem; color:#6B7280;">Prediksi Model:</span><br>
                     <span style="font-size:1.8rem; font-weight:bold; color:{label_color};">{p_label}</span><br>
-                    <span style="font-size:0.82rem; color:#6B7280;">Confidence Score: <b>{confidence_val*100:.2f}%</b></span>
+                    <span style="font-size:0.82rem; color:#6B7280;">Confidence Score: <b>{p_confidence*100:.2f}%</b></span>
                 </div>
                 """,
                 unsafe_allow_html=True
